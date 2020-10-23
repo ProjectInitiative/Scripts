@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+# Upload file to File.io (optional expiration)
+# fio file_name [expiration]
+
+fio () {
+	narg=$#
+	arg1=$1
+	echo "$narg"
+	echo "$arg1"
+	if (( narg >= 2 )); then
+		echo "Arg2"
+		curl -F "file=@$1" "https://file.io/?expires=$2";
+	elif [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
+		echo "HELP"
+		echo "Uploads a file to file.io"
+		echo
+		echo -n "Usage: fio file_name [expiration]"
+	elif (( arg1 >= 1 )); then
+		echo "Arg1"
+		curl -F "file=@$1" "https://file.io";
+	else
+		echo "Arg0"
+		echo "Invalid input arguments";
+		echo
+		echo -n "Use \"fio --help\" for help";
+	fi
+	echo;
+}

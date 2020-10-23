@@ -1,0 +1,140 @@
+# Copyright Kyle Petryszak 2020
+#!/bin/env bash
+
+# POSIX variable
+OPTIND=1 # Reset in case getopts has been used previously in the shell.
+
+# Initialize variables
+
+file=""
+dir=""
+current_key_id=""
+current_key_given=false
+new_key_id=""
+new_key_given=false
+PASSWORD=""
+correct_pswd=false
+recurse=false
+all_files=false
+
+while getopts "h?c:n:ar:" opt; do
+	case $opt in 
+	h|\?)
+		printf "Usage: gpg-trasfer.sh [FILE] [-c: Key ID to decrypt. -n: Key ID to re-encrypt with. \n-r recursively transfer all .gpg or .pgp files in a directory. \n-a (used with -r) check all file extensions]\n"
+		exit 0;;
+	c) 
+		current_key_id=$OPTARG
+		current_key_given=true;;
+	n) 
+		new_key_id=$OPTARG
+		new_key_given=true;;
+  r)
+    dir=$OPTARG
+    recurse=true
+    ;;
+  a)
+    all_files=true;;
+	:) 
+		printf "Missing option argument for -$OPTARG\n" >&2
+		exit 1;;         
+	*)
+		printf "Unimplemented option: -$OPTARG\n" >&2 
+		exit 1;;	
+	esac
+done
+
+shift $((OPTIND-1))
+
+[ "${1:-}" = "--" ] && shift
+
+read_password() {
+  local REPLY="$(
+    # always read from the tty even when redirected:
+    exec < /dev/tty || exit # || exit only needed for bash
+
+    # save current tty settings:
+    tty_state=$(stty -g) || exit
+
+    # schedule restore of the settings on exit of that subshell
+    # or on receiving SIGINT or SIGTERM:
+    trap 'stty "$tty_state"' EXIT INT TERM
+
+    # disable terminal local echo
+    stty -echo || exit
+
+    # prompt on tty
+    printf "Passphrase for key $current_key_id: " > /dev/tty
+
+    # read password as one line, record exit status
+    IFS= read -r password; ret=$?
+
+    # display a newline to visually acknowledge the entered password
+    echo > /dev/tty
+
+    # return the password for $REPLY
+    printf '%s\n' "$password"
+    exit "$ret"
+  )"
+  # return the $REPLY for the function
+  printf $REPLY
+
+}
+
+transfer_data() {
+
+  # Replace file if a file is supplied to the function
+  [ ! -z "$1" ] || file="$1"
+
+	# Reset gpg password memory to insure no crossing passwords are used
+  printf RELOADAGENT | gpg-connect-agent > /dev/null
+  
+	[ ! -z $PASSWORD ] || PASSWORD=$(read_password)
+ 
+  printf $PASSWORD | gpg --batch --pinentry-mode loopback --passphrase-fd 0 -o /dev/null --local-user $current_key_id -as - 2>/dev/null && correct_pswd=true
+  [ "$correct_pswd" = true ] || { printf "Incorrect passphrase for key $current_key_id.\n"; exit 1; }
+
+  confirm=false
+  
+  gpg -q --pinentry-mode cancel --list-packets "$file" 2>/dev/null | grep -q $current_key_id
+  if [ $? = 0 ]; then confirm=true; else printf "$file was not encrypted with key $current_key_id.\n\n"; fi
+	##printf $PASSWORD | gpg -q --passphrase-fd 0 --pinentry-mode loopback --list-packets "$file" > /dev/null && confirm=true
+
+  if [ "$confirm" = true ]; then
+    file=$(readlink -f "$file")
+    filename=$(sed 's@.*/@@' <<< "$file")
+    filedir=$(dirname "$file")
+
+    tmpdir=$(mktemp -d "$filedir/tmp.XXXXXXXXXX")  
+    tmpfile=$(mktemp "$tmpdir"/gpg.XXXXXXXXXX) || { printf "Failed to create temp file\n"; exit 1; }           
+    
+    printf "\nFile being worked on: $file\n"
+
+    printf $PASSWORD |
+    gpg --passphrase-fd 0 --pinentry-mode loopback --decrypt "$file" |
+    gpg --yes -r $new_key_id -o "$tmpfile" --encrypt
+    
+    mv "$tmpfile" "$file" || printf "Failed to move file to: $file\n"
+    rm -rf "$tmpdir" || printf "Failed to remove tmp directory\n"
+	fi
+
+	# Clear out variables 
+	file=""
+	filename=""
+	dir=""
+	tmpdir=""
+	tmpfile=""
+}
+
+[ $current_key_given = true ] || { printf "Must specify key ID to decrypt from\n"; exit 1; }
+[ $new_key_given = true ] || { printf "Must specify key ID to re-encrupt with\n"; exit 1; }
+[ $recurse = true ] || [ -f "$1" ] && file="$1" || { printf "File not found!\n"; exit 1; }
+
+if [ $recurse = true ]; then
+  if [ $all_files = true ]; then
+    find $dir -type f | while read file; do transfer_data "$file"; done
+  else
+    find $dir -type f -name "*.gpg" -or -name "*.pgp" | while read file; do transfer_data "$file"; done
+  fi
+else
+  transfer_data "$file"
+fi

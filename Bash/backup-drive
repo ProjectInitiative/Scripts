@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Argument 1 is the desired filename, String
+# Argument 2 is the desired drive, String i.e. sdX
+
+wdir="$PATH/$(date +%Y-%m-%d)"
+mkdir -p $wdir
+cd $wdir
+
+filename="$(date +%Y-%m-%d_%H.%M)_$1"
+drive=$2
+key_id="KEY-ID"
+
+dd if=/dev/$drive | gzip | gpg --homedir=/home/$USER/.gnupg -r $key_id --encrypt | (pv -p --timer --rate --bytes > ./$filename.img.gz.gpg) 
+
+
+chown -R $USER:$USER $PATH
+
+#sudo dd if=/dev/$drive | pv -p --timer --rate --bytes | sudo dd of=./$filename.img
+#tar -czvf - ./$filename.img | (pv -p --timer --rate --bytes > ./$filename.img.tgz)
+
+
+#pv ./$filename.img.tgz | gpg -r $key_id --encrypt > $filename.img.tgz.gpg

@@ -1,0 +1,12 @@
+2345678 bytes each:
+./beep/boop/im/a/doop/apmc.sh
+./victims/person_x/profile_picture.jpg
+./victims/person_x/social_security.xls
+
+1234 bytes each:
+./this/that/myfile.txt
+./another/one/thisfile.yeeyee
+
+345 bytes each:
+./purple/flurp/can.png
+./uh/eh.mov

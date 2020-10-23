@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+for d in *.zip
+do
+  dir=./${d%%.zip}
+  unzip -d "$dir" "$d"
+done

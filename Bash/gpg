@@ -1,0 +1,7 @@
+#!/bin/bash
+
+filename=$1
+
+# Eventually have in a destination path to output file to
+
+trap "stty echo" SIGINT; echo Enter PGP passphrase: ; stty -echo; gpg --passphrase-fd 0 --pinentry-mode loopback --decrypt $filename; stty echo

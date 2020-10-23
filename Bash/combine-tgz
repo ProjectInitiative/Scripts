@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Add in the ability to add in tar.gz and .tgz
+# possibly files=*.tgz ... files.append(*.tar.gz)
+
+files=(*.tgz)
+dirs=()
+
+mkdir -p tmp
+cd tmp
+mkdir final
+mkdir extracted
+cd extracted
+
+for file in ${files[*]}
+do
+	file_dir=`expr $file : '\(.*\).tgz'`
+	mkdir -p $file_dir
+	tar -xvzf ../../$file -C $file_dir
+	dirs+=($file_dir)
+done
+echo ${dirs[*]}
+echo ${files[*]}
+
+for d in *
+do
+	rsync -avhuP $d/ ../final
+done
+
+cd ../final
+tar -czvf ../../combined.tgz * 
+
+cd ../..
+rm -r tmp
+
+
+
+
+
+
+# The * .[^.]* does not work if there are no hidden directories
+#for d in * .[^.]*
+#do
+#	if [ $d != "final" ]; then
+#		rsync -avhuP $d/ final/
+#	fi
+#done

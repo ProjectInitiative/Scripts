@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Change the "o-ring" string to whatever string you want to search for
+# "o-ring\|o ring" means look for text containing "o-ring" or "o ring"
+
+# To run this command, cd (change directories) to the root folder you want to recursively search through
+# Make a directory called "Found" in the root directory
+# run the script, or copy the command in a unix based shell, and all the PDFs containing the string you want will be copied to "Found"
+
+find ./ -name '*.pdf' -or -name '*.PDF' -not -path "./Found/*"  -exec sh -c 'pdftotext "{}" - | grep -l -Z -i --with-filename --label="{}" --color "o-ring\|o ring"' \; | xargs -0 -I{} cp --parents {} ./Found/
