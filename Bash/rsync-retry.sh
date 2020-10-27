@@ -49,7 +49,7 @@ if [[ "$#" -ne 2 ]]; then
 fi
 
 # loop through remaining arguments
-for (( i=1; i < "$#" + 1; i++ ));
+for (( i=1; i < "$#"; i++ ));
 do
     cur_path="path$i"
 
@@ -65,7 +65,7 @@ done
 
 while true
 do
-        rsync -avz --partial "$path1" "$path2"
+        rsync -avz --partial -P "$path1" "$path2"
         if [ "$?" = "0" ]; then
                 echo "Sync completed"
                 exit
